@@ -34,7 +34,7 @@ bool control_mode_button = false; // Control Mode Button in gui app; if true=clo
                                   // else false=open loop control
 
 //future extension
-bool emergency_shutdown = false;
+bool emergency_shutdown = false; // if pressed then it will be set true and the system will shut down
 
 short int gear_value = 1;
 int sensor_read_timer = 0;
