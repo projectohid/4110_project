@@ -25,12 +25,22 @@ double Kp = 2;
 double Ki = 3;
 double Kd = 2;
 
-bool power_button = false; // system on button in gui app
-bool reverse_button = false; // Reverse Motor Button in gui app
-bool control_mode_button = false; // Control Mode Button in gui app
+//////////////////////////////// BUTTONS ////////////////////////////////////////////////////
+
+bool power_button = false; // system on button in gui app; if true then start the motor else stop the motor
+bool reverse_button = false; // Reverse Motor Button in gui app; if false then motor rotate in forward 
+                             // direction, else in reverse direction
+bool control_mode_button = false; // Control Mode Button in gui app; if true=closed loop control, 
+                                  // else false=open loop control
+
+//future extension
+bool emergency_shutdown = false;
 
 short int gear_value = 1;
 int sensor_read_timer = 0;
+
+float time_period_sec = 0.05;  // 50ms switching period
+
 
 PID pid(&error_signal,&controller_generated_duty_cycle,&ref_duty_cycle,Kp,Ki,Kd,DIRECT); 
 /////////////////////////////////////////// FUNCTION LIST /////////////////////////////////////////
@@ -94,13 +104,14 @@ float read_voltage_sensor()
 
 
 float speed2Dout_transducer()
+//
 {
     float Vout = read_voltage_sensor();
 
     if(Vout < 0)        // If motor operates in reverse direction, voltage produced by generator will alter polarity
       Vout = (-1)*Vout;  // We will take the absolute value
 
-    float output_duty_cycle = ((Vout)/4.8);
+    float output_duty_cycle = ((Vout)/4.8); // ?? what is the logic
 
     if(output_duty_cycle <= 0.5)
       output_duty_cycle = 0.5;
@@ -236,10 +247,8 @@ void setup_and_run_motor()
 
 
 
-void run_motor(bool dir,float duty_cycle)
-{
-  float time_period_sec = 0.05;  // 50ms switching period
-  
+void run_motor(bool dir,float duty_cycle) // dir=false means forward direction and true means reverse direction
+{  
   if(dir == false)    
     {
       digitalWrite(Q2_pin,HIGH);
