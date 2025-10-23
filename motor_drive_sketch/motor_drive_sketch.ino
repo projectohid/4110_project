@@ -1,8 +1,8 @@
 # include <PID_v1.h>
 ///////////////////////////////////////////  PIN LIST /////////////////////////////////////////
 
-short int rev_rot_pin = 2;
-short int forward_rot_pin = 3;
+short int rev_rot_pin = 2; // Q3 pin
+short int forward_rot_pin = 3; // Q1 pin
 short int Q2_pin = 4;
 short int Q4_pin = 5;
 short int power_button_pin = 6;
@@ -25,22 +25,12 @@ double Kp = 2;
 double Ki = 3;
 double Kd = 2;
 
-//////////////////////////////// BUTTONS ////////////////////////////////////////////////////
-
-bool power_button = false; // system on button in gui app; if true then start the motor else stop the motor
-bool reverse_button = false; // Reverse Motor Button in gui app; if false then motor rotate in forward 
-                             // direction, else in reverse direction
-bool control_mode_button = false; // Control Mode Button in gui app; if true=closed loop control, 
-                                  // else false=open loop control
-
-//future extension
-bool emergency_shutdown = false; // if pressed then it will be set true and the system will shut down
+bool power_button = false;
+bool reverse_button = false;
+bool control_mode_button = false;
 
 short int gear_value = 1;
 int sensor_read_timer = 0;
-
-float time_period_sec = 0.05;  // 50ms switching period
-
 
 PID pid(&error_signal,&controller_generated_duty_cycle,&ref_duty_cycle,Kp,Ki,Kd,DIRECT); 
 /////////////////////////////////////////// FUNCTION LIST /////////////////////////////////////////
@@ -50,8 +40,7 @@ void motor_on_forward(void);      /// Forward movement
 void motor_off_forward(void);     /// Forward movement
 void motor_on_reverse(void);      /// Reverse movement
 void motor_off_reverse(void);     /// Reverse movement
-void wait_till_motor_stop(void);  /// Gives time to motor to slow down before counter rotating it
-                                  /// in order to avoid wear and tear of motor by hard breaking
+void wait_till_motor_stop(void);  /// Gives time to motor to slow down before counter rotating it in order to avoid wear and tear of motor by hard breaking
 void setup_and_run_motor(void);   /// Configures motor action
 void run_motor(bool,float);       /// Manipulates H-bridge motor driver
 void stop_motor(void);            /// Ceases motor action from any state
@@ -104,14 +93,13 @@ float read_voltage_sensor()
 
 
 float speed2Dout_transducer()
-//
 {
     float Vout = read_voltage_sensor();
 
     if(Vout < 0)        // If motor operates in reverse direction, voltage produced by generator will alter polarity
       Vout = (-1)*Vout;  // We will take the absolute value
 
-    float output_duty_cycle = ((Vout)/4.8); // ?? what is the logic
+    float output_duty_cycle = ((Vout)/4.8);
 
     if(output_duty_cycle <= 0.5)
       output_duty_cycle = 0.5;
@@ -161,8 +149,8 @@ void read_user_data()
           }
         if(power_button == false)
           {
-            stop_motor();
             digitalWrite(rheostatic_brake_switch,HIGH);
+            stop_motor();
             wait_till_motor_stop();
             digitalWrite(rheostatic_brake_switch,LOW);
           }
@@ -174,8 +162,8 @@ void read_user_data()
       {
         reverse_button = !reverse_button;
 
-        stop_motor();
         digitalWrite(rheostatic_brake_switch,HIGH);
+        stop_motor();
         wait_till_motor_stop();
         digitalWrite(rheostatic_brake_switch,LOW);
 
@@ -247,8 +235,10 @@ void setup_and_run_motor()
 
 
 
-void run_motor(bool dir,float duty_cycle) // dir=false means forward direction and true means reverse direction
-{  
+void run_motor(bool dir,float duty_cycle)
+{
+  float time_period_sec = 0.05;  // 50ms switching period
+  
   if(dir == false)    
     {
       digitalWrite(Q2_pin,HIGH);
