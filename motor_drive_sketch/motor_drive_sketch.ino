@@ -80,6 +80,9 @@ void loop()
     // Don't use any delay function inside loop
     if (Serial.available()) {
       String cmd = Serial.readStringUntil('\n');
+
+      Serial.print("Received from MATLAB: ");
+      Serial.println("ACK: " + cmd);
       cmd.trim();
 
       if (cmd == "POWER_ON") power_button = true;
