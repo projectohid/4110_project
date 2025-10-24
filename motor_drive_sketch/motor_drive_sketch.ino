@@ -76,8 +76,20 @@ void setup()
 }
 
 void loop() 
-{
-  // Don't use any delay function inside loop
+  {
+    // Don't use any delay function inside loop
+    if (Serial.available()) {
+      String cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+
+      if (cmd == "POWER_ON") power_button = true;
+      else if (cmd == "FORWARD") reverse_button = false;
+      else if (cmd == "REVERSE") reverse_button = true;
+      else if (cmd == "CLOSED_LOOP") control_mode_button = true;
+      else if (cmd == "OPEN_LOOP") control_mode_button = false;
+      else if (cmd == "SHUTDOWN") emergency_shutdown = true;
+  }
+
   
   read_user_data();
   setup_and_run_motor();
