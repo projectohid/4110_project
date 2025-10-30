@@ -28,6 +28,7 @@ double Kd = 2;
 bool power_button = false;
 bool reverse_button = false;
 bool control_mode_button = false;
+bool emergency_shutdown = false;
 
 short int gear_value = 1;
 int sensor_read_timer = 0;
