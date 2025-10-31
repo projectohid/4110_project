@@ -1,0 +1,1 @@
+Good news is motor is running fast in both directions. It is receiving approximately 7.5 volts out of 11.6 volts supplied to it. Voltage drop across MOSFET is less as gate signal strength is increased. Now, no batteries are required and gate signal is taken from main supply after stepping it down using a buck converter 
