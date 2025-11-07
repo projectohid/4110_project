@@ -6,27 +6,29 @@
 //# define show_pid_response_on_serial_plotter // Comment this line if you don't want pid response to visualize in oscilloscope.
 
 ///////////////////////////////////////////  PIN LIST /////////////////////////////////////////
+//INPUT PINS
+short int power_button_pin = 6;
+short int reverse_button_pin = 7;
+short int control_mode_button_pin = 8;
+# define accelerator_pin A0 // range 50 - 100,floating point (double)
+# define voltage_sensor_pin A1 // generator terminal voltage, works only in closed loop...but can be mode work in open loop also
+# define steering_pot_sensor_pin A2 // steering wheel
 
+//OUTPUT PINS
 short int rev_rot_pin = 2;                  // Q3 and Q4 pin
 short int forward_rot_pin = 3;              // Q1 and Q2 pin
 short int rheostatic_brake_switch = 4;
 short int steering_wheel_pin = 5;
-short int power_button_pin = 6;
-short int reverse_button_pin = 7;
-short int control_mode_button_pin = 8;
 short int generator_terminal_changing_switch = 9;
 
 // # define Kp_pin A3 // PID tuning
 // # define Ki_pin A4 // PID tuning
 // # define Kd_pin A5 // PID tuning
 
-# define accelerator_pin A0
-# define voltage_sensor_pin A1
-# define steering_pot_sensor_pin A2
 
 /////////////////////////////////////// GLOBAL VARIABLE LIST /////////////////////////////////////
 
-double ref_duty_cycle = 0.8;
+double ref_duty_cycle = 0.8; // accelerator pin data... also be set by the knob in MATLAB app
 double active_duty_cycle = 0.8;
 double controller_generated_duty_cycle = 0.6;
 double error_signal = 0.0;
@@ -35,12 +37,17 @@ double Kp = 0.1;  //  Tuned
 double Ki = 0.4;  //  Tuned
 double Kd = 0.01; //  Tuned
 
+//FLAG VARIABLES
 bool power_button = false;
 bool reverse_button = false;
 bool control_mode_button = false;
 bool emergency_shutdown = false;
 
 int sensor_read_timer = 0;
+int speed_value;//speed knob value from MATLAB APP (0-100)
+
+int baud_rate = 9600;
+unsigned long lastSend = 0;
 
 Servo steer_motor;
 PID pid(&error_signal,&controller_generated_duty_cycle,&ref_duty_cycle,Kp,Ki,Kd,REVERSE);
@@ -66,7 +73,7 @@ void run_feedback_path(void);     /// Accumulates all the components of closed l
 
 void setup() 
 {
-  Serial.begin(9600);
+  Serial.begin(baud_rate);
 
   pinMode(power_button_pin,INPUT);
   pinMode(reverse_button_pin,INPUT);
@@ -148,8 +155,16 @@ void loop()
   // }
   // //////////////////////////////////////////////////////
   read_user_data();
+  read_MATLAB_data();
+  // sendStatusToMATLAB();
   setup_and_run_motor();
+  
+  if(millis() - lastSend >= 200){
+    sendStatusToMATLAB();
+    lastSend = millis();
+  }
 }
+
 
 //////////////////////////////////////////////////////////// Control action //////////////////////////////////////////////////////
 
@@ -200,6 +215,71 @@ void run_feedback_path()
 }
 
 ////////////////////////////////////////////////////////////////// General operation ////////////////////////////////////////////////////
+
+void sendStatusToMATLAB(){
+  // while(Serial.available() > 0) Serial.read(); // clear out any old incoming serial data
+  // Serial.flush(); // wait for any previous transmission to complete
+
+  //now send the clean data
+  float Vout = read_voltage_sensor();
+  Serial.print(power_button); Serial.print(",");
+  Serial.print(reverse_button); Serial.print(",");
+  Serial.print(control_mode_button); Serial.print(",");
+  Serial.print(ref_duty_cycle); Serial.print(",");
+  Serial.println(Vout, 3);  // send with 3 decimal places
+}
+
+void read_MATLAB_data(){
+  if (Serial.available()){
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim(); // removes \r and spaces
+
+    // Serial.print("Received from MATLAB: ");
+    // Serial.println(cmd); // print exactly what was read
+
+    if (cmd.equalsIgnoreCase("POWER_ON")) {
+      power_button = true;
+      // Serial.println("Hello");
+    } 
+    else if (cmd.equalsIgnoreCase("FORWARD")) {
+      stop_motor();
+      wait_till_motor_stop();
+      power_button = true;
+      reverse_button = false;
+    } 
+    else if (cmd.equalsIgnoreCase("REVERSE")) {
+      stop_motor();
+      wait_till_motor_stop();
+      power_button = true;
+      reverse_button = true;
+    } 
+    else if (cmd.equalsIgnoreCase("CLOSED_LOOP")) {
+      control_mode_button = true;
+    } 
+    else if (cmd.equalsIgnoreCase("OPEN_LOOP")) {
+      control_mode_button = false;
+    } 
+    else if (cmd.equalsIgnoreCase("SHUTDOWN")) {
+      power_button = false;
+    }
+    else if (cmd.startsWith("SPEED:")) {
+      speed_value = cmd.substring(6).toInt(); // Extract numeric part (0–100)
+
+      // Map 0–100 to 0.5–1.0 range
+      ref_duty_cycle = 0.5 + (speed_value / 100.0) * 0.5;
+  }
+
+    // // Sending Acknoledgement to MATLAB
+    // Serial.print("ACK: ");
+    // Serial.print(cmd);
+    // Serial.print(" | Power: "); Serial.print(power_button);
+    // Serial.print(" | Reverse: "); Serial.print(reverse_button);
+    // Serial.print(" | Control: "); Serial.print(control_mode_button);
+    // Serial.print("ACK: SPEED set to "); Serial.print(speed_value);
+    // Serial.print(" | ref_duty_cycle = "); Serial.println(ref_duty_cycle, 3); // print 3 decimal places
+    sendStatusToMATLAB();
+  }
+}
 
 void read_user_data()
 {
@@ -309,6 +389,7 @@ void setup_and_run_motor()
   else
   {
     stop_motor();
+    wait_till_motor_stop();
   }
 }
 
